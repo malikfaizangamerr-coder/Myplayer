@@ -4,32 +4,25 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dynamic Shaka Player UI (v4.16.3)</title>
-  <!-- <meta name="referrer" content="no-referrer"> -->
+    <title>Dynamic Shaka Player UI (v4.16.3) - TV Optimized</title>
     <!-- Load Shaka Player UI components -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/shaka-player/4.16.3/shaka-player.ui.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/shaka-player/4.16.3/controls.css">
-
     <!-- Load Material Icons for Shaka UI -->
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
 
     <style>
-        /* Custom styles from your working setup for full-screen video */
-        html,
-        body {
+        html, body {
             margin: 0;
             padding: 0;
             background: #000;
             height: 100%;
             overflow: hidden;
-            /* Prevent scrolling on full-page player */
         }
 
         #video-container {
             width: 100vw;
-            /* Use viewport width */
             height: 100vh;
-            /* Use viewport height */
             position: relative;
             background: #000;
         }
@@ -39,10 +32,9 @@
             height: 100%;
             background: #000;
             object-fit: contain;
-            /* Ensure video fits within the container */
         }
 
-        /* OVERLAY IMAGE STYLES */
+        /* Overlay image (agar aap use kar rahe hain) */
         #overlay-image {
             position: absolute;
             top: 50%;
@@ -55,7 +47,6 @@
             z-index: 5;
         }
 
-        /* CUSTOM CONTROLS STYLES (from your setup) */
         .shaka-controls-container {
             z-index: 10 !important;
         }
@@ -64,7 +55,7 @@
             z-index: 15 !important;
         }
 
-        /* PREMIUM MENU STYLES */
+        /* Premium menu styles */
         .shaka-settings-menu {
             background: rgba(30, 30, 30, 0.6) !important;
             backdrop-filter: blur(10px);
@@ -94,10 +85,7 @@
         .shaka-settings-menu button::before {
             content: "";
             position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
+            top: 0; left: 0; right: 0; bottom: 0;
             background: linear-gradient(135deg, rgba(0, 198, 255, 0.12), rgba(0, 114, 255, 0.12));
             opacity: 0;
             transition: opacity 0.3s ease;
@@ -130,121 +118,66 @@
         }
 
         @keyframes fadeIn {
-            from {
-                opacity: 0;
-                transform: scale(0.95);
-            }
-
-            to {
-                opacity: 1;
-                transform: scale(1);
-            }
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
         }
     </style>
-
-    
-
-    
 </head>
 
 <body>
     <div id="video-container">
-        <!-- The Shaka UI expects this setup -->
-        <video id="video" poster="https://dns-tv.pages.dev/logo/loading.gif" class="shaka-video" playsinline></video>
-        <!-- The overlay image you want to remove on playback -->
-        
-        <!-- The container where Shaka UI will build controls -->
+        <!-- Autoplay ke liye muted zaroori hai -->
+        <video id="video" poster="https://dns-tv.pages.dev/logo/loading.gif" class="shaka-video" playsinline autoplay muted></video>
         <div class="shaka-controls-container" shaka-controls></div>
     </div>
 
     <script>
-        /**
-         * Converts a hex string (like Key ID or Key) into a base64 string,
-         * which is the format Shaka Player's clearKeys config prefers.
-         * @param {string} hex - The hex string to convert.
-         * @returns {string} The base64 string.
-         */
-
-
         document.addEventListener('DOMContentLoaded', async () => {
-
-            // Install polyfills early, as required by Shaka Player
             shaka.polyfill.installAll();
 
-            // 1. Parse URL parameters
             const params = new URLSearchParams(window.location.search);
             const manifestUri = params.get('manifest');
-            // Reading separate key and keyid parameters as requested
             const keyHex = params.get('key');
             const keyIdHex = params.get('keyid');
             const thumpUri = params.get('thumb');
 
-            // 2. Conditional Initialization: Only proceed if manifest is available
             if (!manifestUri) {
                 console.warn('No "manifest" URI found in URL. Player initialization aborted.');
-                // Optionally show a message to the user here
                 return;
             }
 
-            // 3. Get DOM elements
             const video = document.getElementById('video');
             const overlayImage = document.getElementById('overlay-image');
             const container = document.getElementById('video-container');
-            // Apply the 'thump' URI as the video poster
+
             if (thumpUri) {
                 video.poster = thumpUri;
-                console.log('Video poster (thump) applied:', thumpUri);
             }
 
-            // 4. Initialize Player and UI
             const player = new shaka.Player(video);
             const ui = new shaka.ui.Overlay(player, container, video);
 
-            // 5. Set up Error Handling
             player.addEventListener('error', (e) => {
                 console.error('Shaka Player Error:', e.detail);
-                // In a full-screen UI, you might want a non-blocking error message here
             });
 
-
-
-            // 6. Handle DRM Configuration (ClearKey)
-            // Check for 'clearkey', and both 'keyid' and 'key' parameters
+            // ClearKey DRM setup
             if (keyIdHex && keyHex) {
                 try {
-                    // keyIdHex and keyHex are now retrieved directly from URL parameters.
-                    if (!keyIdHex || !keyHex) {
-                        // This check is technically redundant due to the outer if(), but good practice.
-                        throw new Error('Missing "key" or "keyid" parameters for ClearKey.');
-                    }
-
-
-
                     const clearKeyMap = {};
                     clearKeyMap[keyIdHex] = keyHex;
-
-                    // Apply ClearKey configuration
                     player.configure({
                         drm: {
                             clearKeys: clearKeyMap,
-                            // Shaka needs a servers entry for the system to be recognized.
-                            servers: {
-                                'org.w3.clearkey': manifestUri
-                            }
+                            servers: { 'org.w3.clearkey': manifestUri }
                         }
                     });
-
-                    console.log('ClearKey configuration applied for manifest:', manifestUri);
-
                 } catch (e) {
-                    console.error('ClearKey setup failed. Attempting to load unencrypted.', e);
-                    // The player will try to load, but DRM may fail if encryption is present
+                    console.error('ClearKey setup failed.', e);
                 }
-            } else if (drmScheme) {
-                console.warn(`DRM Scheme '${drmScheme}' is specified but necessary keys are missing or not supported yet.`);
             }
 
-            // 7. Configure UI Controls (using your custom list)
+            // UI Configuration for TV / Keyboard
             ui.configure({
                 controlPanelElements: [
                     'play_pause', 'time_and_duration',
@@ -252,41 +185,55 @@
                     'cast', 'fullscreen'
                 ],
                 enableQualitySelection: true,
-                // Add autoplay so the overlay is removed quickly if allowed by browser
-                addBigPlayButton: true
+                addBigPlayButton: true,
+                // Keyboard/Remote navigation enable karein
+                enableKeyboardPlaybackControls: true 
             });
 
-            // 8. Load the manifest
+            // Start from lowest quality (360p)
+            // defaultBandwidthEstimate ko kam set karne se player low quality se start hota hai
+            player.configure({
+                abr: {
+                    enabled: true,
+                    defaultBandwidthEstimate: 200000 // ~200 kbps, forces lowest variant
+                }
+            });
+
+            // TV Remote: DPAD_CENTER (OK button) handling
+            // Agar focus player par hai, to OK button se play/pause toggle karein
+            document.addEventListener('keydown', (e) => {
+                // DPAD_CENTER Android par 'Enter' ke roop mein aata hai
+                if (e.key === 'Enter' || e.keyCode === 13) {
+                    // Agar focus kisi button par nahi hai, to play/pause toggle karein
+                    if (document.activeElement === document.body || document.activeElement === video) {
+                        if (video.paused) {
+                            video.play();
+                        } else {
+                            video.pause();
+                        }
+                    }
+                }
+            });
+
+            // Load manifest
             try {
-                // Shaka automatically handles both HLS and DASH
                 await player.load(manifestUri);
                 console.log('Video loaded successfully:', manifestUri);
+                // Ensure autoplay triggers
+                video.play().catch(e => console.warn('Autoplay blocked:', e));
             } catch (e) {
                 console.error('Error loading video manifest', e);
             }
 
-            // 9. Remove overlay image when playback starts
+            // Remove overlay when playback starts
             video.addEventListener('playing', () => {
                 if (overlayImage) {
-                    // Use opacity transition for a smoother visual effect
                     overlayImage.style.transition = 'opacity 0.5s ease-out';
                     overlayImage.style.opacity = '0';
-                    setTimeout(() => {
-                        overlayImage.remove();
-                    }, 500);
+                    setTimeout(() => overlayImage.remove(), 500);
                 }
             });
-
-            // If the video is already playing due to 'autoplay' and 'muted' setup (common practice), 
-            // trigger the overlay removal immediately.
-            if (video.autoplay && !video.paused) {
-                video.dispatchEvent(new Event('playing'));
-            }
-
-          
         });
     </script>
-
-
-
+</body>
 </html>
